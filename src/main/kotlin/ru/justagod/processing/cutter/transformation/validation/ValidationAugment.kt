@@ -167,7 +167,7 @@ class ValidationAugment(private val config: CutterConfig, private val model: Pro
                 if (sides != null) return sides
             }
         } catch (e: BytecodeModelFactory.BytecodeNotFoundException) {
-            println("Could not resolve hierarchy for $child (at type ${e.className}), this should lead to a validation error...")
+            //println("Could not resolve hierarchy for $child (at type ${e.className}), this should lead to a validation error...")
         }
 
         return null

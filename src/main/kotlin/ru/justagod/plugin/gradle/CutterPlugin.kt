@@ -16,7 +16,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Callable
 
-class CutterPlugin : Plugin<Project>, DependencyResolutionListener {
+class CutterPlugin : Plugin<Project> {
 
     lateinit var project: Project
     lateinit var defaultsFile: File
@@ -47,18 +47,22 @@ class CutterPlugin : Plugin<Project>, DependencyResolutionListener {
     override fun apply(project: Project) {
         project.afterEvaluate {
             this.project = project
-
             defaultsFile = copyDefaults(project)
-            project.gradle.addListener(this)
+
+            // Добавляем defaultsFile в зависимости implementation
+            val implConfig = implementationConfiguration()
+            project.dependencies.add(implConfig.name, project.files(defaultsFile))
+
+            // Добавляем defaultsFile в jar (как zipTree)
+            val jarTask = project.tasks.findByName("jar") as? Jar
+            jarTask?.from(project.zipTree(defaultsFile))
 
             initiateTasks(project)
         }
-
     }
 
     private fun compileConfiguration(): Configuration {
-        return project.configurations.findByName("compile")
-            ?: project.configurations.findByName("compileClasspath")!!
+        return project.configurations.findByName("compileClasspath")!!
     }
 
     private fun implementationConfiguration(): Configuration {
@@ -79,7 +83,7 @@ class CutterPlugin : Plugin<Project>, DependencyResolutionListener {
         task.dependsOn += project.tasks.findByName("build")!!
         task.group = "cutter"
 
-        task.from(Callable { project.tasks.findByName("jar")!!.outputs.files.map { project.zipTree(it) }})
+        task.from(Callable { project.tasks.findByName("reobfJar")!!.outputs.files.map { project.zipTree(it) }})
 
         return task
     }
@@ -143,18 +147,6 @@ class CutterPlugin : Plugin<Project>, DependencyResolutionListener {
                 removeAnnotations = true
             )
         }
-    }
-
-    override fun beforeResolve(dependencies: ResolvableDependencies) {
-        project.dependencies.add(implementationConfiguration().name, project.files(defaultsFile))
-
-        val jar = project.tasks.findByName("jar") as Jar
-        jar.from(project.zipTree(defaultsFile))
-
-        project.gradle.removeListener(this)
-    }
-
-    override fun afterResolve(dependencies: ResolvableDependencies) {
     }
 
 }
